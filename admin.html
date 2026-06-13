@@ -236,8 +236,8 @@ tbody td{padding:10px 16px;font-size:0.85rem;color:rgba(253,250,244,0.75);}
     <div class="login-logo">إتش إم <span>مول</span></div>
     <div class="login-subtitle">ADMIN CONTROL PANEL</div>
     <div class="input-group">
-      <label>اسم المستخدم</label>
-      <input type="text" id="usernameInput" placeholder="admin" autocomplete="off" onkeydown="if(event.key==='Enter')doLogin()">
+      <label>البريد الإلكتروني</label>
+      <input type="email" id="usernameInput" placeholder="admin@example.com" autocomplete="username" onkeydown="if(event.key==='Enter')doLogin()">
     </div>
     <div class="input-group">
       <label>كلمة المرور</label>
@@ -405,7 +405,7 @@ tbody td{padding:10px 16px;font-size:0.85rem;color:rgba(253,250,244,0.75);}
           <div class="settings-card">
             <div class="settings-card-header"><span>🔐</span><h3>تغيير كلمة المرور</h3></div>
             <div class="settings-card-body">
-              <div class="field-row"><label>كلمة المرور الحالية</label>
+              <div class="field-row" style="display:none;"><label>كلمة المرور الحالية</label>
                 <div class="pw-wrap"><input type="password" id="s_oldpw" placeholder="••••••••"><button type="button" class="pw-toggle" data-target="s_oldpw" onclick="togglePwById(this)">👁️</button></div>
               </div>
               <div class="field-row"><label>كلمة المرور الجديدة</label>
@@ -687,16 +687,6 @@ tbody td{padding:10px 16px;font-size:0.85rem;color:rgba(253,250,244,0.75);}
 </script>
 
 <script>
-var DEFAULT_USER = 'admin';
-var DEFAULT_PASS = 'HMmall2026';
-
-function getCredentials() {
-  return {
-    user: localStorage.getItem('hm_admin_user') || DEFAULT_USER,
-    pass: localStorage.getItem('hm_admin_pass') || DEFAULT_PASS
-  };
-}
-
 // PASSWORD TOGGLE
 function togglePw(id, btn) {
   var inp = document.getElementById(id);
@@ -709,47 +699,53 @@ function togglePw(id, btn) {
 }
 function togglePwById(btn) { togglePw(btn.getAttribute('data-target'), btn); }
 
-// AUTH
-function doLogin() {
-  var u = document.getElementById('usernameInput').value.trim();
+// AUTH — Supabase (real, server-side authentication)
+function enterDashboard() {
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  initDashboard();
+  addLog('تسجيل دخول ناجح');
+}
+async function doLogin() {
+  var email = document.getElementById('usernameInput').value.trim();
   var p = document.getElementById('passwordInput').value;
-  var creds = getCredentials();
-  if (u === creds.user && p === creds.pass) {
-    sessionStorage.setItem('hm_logged_in', '1');
-    document.getElementById('loginScreen').style.display = 'none';
-    document.getElementById('dashboard').style.display = 'block';
-    initDashboard();
-    addLog('تسجيل دخول ناجح');
-  } else {
-    var err = document.getElementById('loginError');
+  var err = document.getElementById('loginError');
+  if (!window.sb) { err.textContent='❌ لا يوجد اتصال بقاعدة البيانات'; err.classList.add('show'); return; }
+  var res = await window.sb.auth.signInWithPassword({ email: email, password: p });
+  if (res.error) {
+    err.textContent = '❌ البريد الإلكتروني أو كلمة المرور غير صحيحة';
     err.classList.add('show');
     setTimeout(function(){ err.classList.remove('show'); }, 3000);
+    return;
   }
+  enterDashboard();
 }
-function doLogout() {
-  sessionStorage.removeItem('hm_logged_in');
+async function doLogout() {
+  if (window.sb) { try { await window.sb.auth.signOut(); } catch(e){} }
   document.getElementById('dashboard').style.display = 'none';
   document.getElementById('loginScreen').style.display = 'flex';
   document.getElementById('passwordInput').value = '';
 }
-if (sessionStorage.getItem('hm_logged_in') === '1') {
-  document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  setTimeout(initDashboard, 50);
-}
+// Restore an existing session on page load
+(async function(){
+  if (!window.sb) return;
+  try {
+    var s = await window.sb.auth.getSession();
+    if (s.data && s.data.session) { enterDashboard(); }
+  } catch(e){}
+})();
 
 // CHANGE PASSWORD
-function changePassword() {
-  var old = document.getElementById('s_oldpw').value;
+async function changePassword() {
   var nw  = document.getElementById('s_newpw').value;
   var cf  = document.getElementById('s_confirmpw').value;
   var msg = document.getElementById('pw-msg');
-  var creds = getCredentials();
   msg.style.display = 'block';
-  if (old !== creds.pass)  { msg.style.color='#FC8181'; msg.textContent='❌ كلمة المرور الحالية غير صحيحة'; return; }
-  if (nw.length < 6)       { msg.style.color='#FC8181'; msg.textContent='❌ كلمة المرور قصيرة جداً'; return; }
+  if (nw.length < 6)       { msg.style.color='#FC8181'; msg.textContent='❌ كلمة المرور قصيرة جداً (6 أحرف على الأقل)'; return; }
   if (nw !== cf)           { msg.style.color='#FC8181'; msg.textContent='❌ كلمتا المرور غير متطابقتين'; return; }
-  localStorage.setItem('hm_admin_pass', nw);
+  if (!window.sb) { msg.style.color='#FC8181'; msg.textContent='❌ لا يوجد اتصال'; return; }
+  var res = await window.sb.auth.updateUser({ password: nw });
+  if (res.error) { msg.style.color='#FC8181'; msg.textContent='❌ '+res.error.message; return; }
   msg.style.color='#68D391'; msg.textContent='✓ تم تغيير كلمة المرور';
   document.getElementById('s_oldpw').value='';
   document.getElementById('s_newpw').value='';
