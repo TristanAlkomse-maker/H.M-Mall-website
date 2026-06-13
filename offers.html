@@ -169,6 +169,24 @@ footer a{color:var(--gold);text-decoration:none;font-size:0.82rem;}
 </footer>
 
 
+<!-- ═══ Supabase data layer (shared database) ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  window.SB_URL = 'https://lmiodxtfnfudixtdxpwo.supabase.co';
+  window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaW9keHRmbmZ1ZGl4dGR4cHdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgxNjIsImV4cCI6MjA5Njk0NDE2Mn0.E1r9ECpY_XppMw7mrnHGVlMMYQkcu-tttSOfQ0nIaM0';
+  window.sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(window.SB_URL, window.SB_KEY) : null;
+  async function sbSyncOffersToCache(){
+    if(!window.sb) return false;
+    try{
+      var res = await window.sb.from('offers').select('*');
+      if(res.error){ console.warn('sb offers read', res.error); return false; }
+      localStorage.setItem('hm_offers_live', JSON.stringify(res.data||[]));
+      return true;
+    }catch(e){ console.warn(e); return false; }
+  }
+</script>
+
 <script>
 /* ════════════════════════════════════════
    OFFERS PAGE — reads live data from admin
@@ -287,8 +305,19 @@ function renderOffers() {
   document.head.appendChild(s);
 })();
 
-// Render on load
+// Render on load — paint immediately, then refresh from the shared database
 renderOffers();
+var __lastOffersHash = localStorage.getItem('hm_offers_live') || '';
+sbSyncOffersToCache().then(function(ok){
+  if(ok){ __lastOffersHash = localStorage.getItem('hm_offers_live') || ''; renderOffers(); }
+});
+setInterval(function(){
+  sbSyncOffersToCache().then(function(ok){
+    if(!ok) return;
+    var cur = localStorage.getItem('hm_offers_live') || '';
+    if(cur !== __lastOffersHash){ __lastOffersHash = cur; renderOffers(); }
+  });
+}, 8000);
 
 // Live update — poll localStorage every 2 seconds for admin changes
 var lastUpdated = localStorage.getItem('hm_offers_updated') || '0';

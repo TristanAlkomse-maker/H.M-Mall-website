@@ -601,6 +601,91 @@ tbody td{padding:10px 16px;font-size:0.85rem;color:rgba(253,250,244,0.75);}
 
 <div class="toast" id="toast"></div>
 
+<!-- ═══ Supabase data layer (shared database) ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  window.SB_URL = 'https://lmiodxtfnfudixtdxpwo.supabase.co';
+  window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaW9keHRmbmZ1ZGl4dGR4cHdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgxNjIsImV4cCI6MjA5Njk0NDE2Mn0.E1r9ECpY_XppMw7mrnHGVlMMYQkcu-tttSOfQ0nIaM0';
+  window.sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(window.SB_URL, window.SB_KEY) : null;
+
+  // Upload a base64 data-URL to Storage, return the public URL (or null on failure)
+  async function sbUploadDataUrl(dataUrl, prefix){
+    if(!window.sb || !dataUrl || dataUrl.indexOf('data:')!==0) return dataUrl||null;
+    try{
+      var blob = await (await fetch(dataUrl)).blob();
+      var ext = (blob.type.split('/')[1]||'png').split(';')[0];
+      var path = (prefix||'img') + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,7) + '.' + ext;
+      var up = await window.sb.storage.from('product-images').upload(path, blob, {contentType:blob.type});
+      if(up.error){ console.warn('upload', up.error); return null; }
+      return window.sb.storage.from('product-images').getPublicUrl(path).data.publicUrl;
+    }catch(e){ console.warn('upload ex', e); return null; }
+  }
+
+  // Map an in-memory product to a database row
+  function sbProductToRow(p){
+    return {pid:p.pid, type:p.type, shop_id:p.shopId, shop_name:p.shopName,
+      name:p.name, descr:p.desc, price:p.price, old_price:p.oldPrice||null, badge:p.badge||null,
+      colors:p.colors||[], sizes:p.sizes||[], oos_sizes:p.oosSizes||[],
+      all_sizes:p.allSizes||[], img:p.img||null};
+  }
+  function sbRowToProduct(r){
+    return {pid:r.pid, type:r.type, shopId:r.shop_id, shopName:r.shop_name,
+      name:r.name, desc:r.descr, price:r.price, oldPrice:r.old_price, badge:r.badge,
+      colors:r.colors||[], sizes:r.sizes||[], oosSizes:r.oos_sizes||[],
+      allSizes:r.all_sizes||[], img:r.img||null};
+  }
+  // Upload any base64 images in a product to Storage, then upsert the row
+  async function sbPersistProduct(p){
+    if(!window.sb) return {ok:false, msg:'لا يوجد اتصال بقاعدة البيانات'};
+    try{
+      if(p.img && String(p.img).indexOf('data:')===0){
+        var u = await sbUploadDataUrl(p.img, 'p'+p.pid);
+        p.img = u;
+      }
+      for(var i=0;i<(p.colors||[]).length;i++){
+        if(p.colors[i].img && String(p.colors[i].img).indexOf('data:')===0){
+          p.colors[i].img = await sbUploadDataUrl(p.colors[i].img, 'p'+p.pid+'_c'+i);
+        }
+      }
+      var res = await window.sb.from('products').upsert(sbProductToRow(p), {onConflict:'pid'});
+      if(res.error){ console.warn('upsert', res.error); return {ok:false, msg:res.error.message}; }
+      return {ok:true};
+    }catch(e){ return {ok:false, msg:String(e)}; }
+  }
+  async function sbDeleteProductRow(pid){
+    if(!window.sb) return false;
+    var res = await window.sb.from('products').delete().eq('pid', pid);
+    if(res.error){ console.warn('delete', res.error); return false; }
+    return true;
+  }
+  async function sbLoadProductsArr(){
+    if(!window.sb) return null;
+    var res = await window.sb.from('products').select('*');
+    if(res.error){ console.warn('load products', res.error); return null; }
+    return (res.data||[]).map(sbRowToProduct);
+  }
+  // Offers
+  async function sbUpsertOffer(o){
+    if(!window.sb) return false;
+    var res = await window.sb.from('offers').upsert({id:o.id,name:o.name,discount:o.discount,duration:o.duration||'',cat:o.cat||null}, {onConflict:'id'});
+    if(res.error){ console.warn('offer upsert', res.error); return false; }
+    return true;
+  }
+  async function sbDeleteOffer(id){
+    if(!window.sb) return false;
+    var res = await window.sb.from('offers').delete().eq('id', id);
+    if(res.error){ console.warn('offer del', res.error); return false; }
+    return true;
+  }
+  async function sbLoadOffersArr(){
+    if(!window.sb) return null;
+    var res = await window.sb.from('offers').select('*');
+    if(res.error){ console.warn('load offers', res.error); return null; }
+    return res.data||[];
+  }
+</script>
+
 <script>
 var DEFAULT_USER = 'admin';
 var DEFAULT_PASS = 'HMmall2026';
@@ -737,6 +822,15 @@ function loadOffersFromStorage() {
     if(s&&s.length) offerShops=s;
   } catch(e){}
 }
+async function loadOffersFromDB() {
+  var arr = await sbLoadOffersArr();
+  if (arr) {
+    offerShops = arr.map(function(o){return {id:o.id,name:o.name,discount:o.discount,duration:o.duration||'',cat:o.cat};});
+    saveOffersToStorage();
+    try { localStorage.setItem('hm_offers_live', JSON.stringify(offerShops)); } catch(e){}
+    renderOffers();
+  }
+}
 function saveSettings() {
   try {
     var s={};
@@ -820,13 +914,15 @@ function renderOffers(){
     return '<tr>'+
       '<td class="td-num">'+o.id+'</td>'+
       '<td class="td-name">'+o.name+'</td>'+
-      '<td><input type="number" value="'+o.discount+'" min="1" max="99" style="width:64px;background:rgba(255,255,255,0.07);border:1px solid rgba(201,168,76,0.2);color:var(--white);border-radius:4px;padding:4px 8px;font-family:Cairo,sans-serif;" onchange="offerShops['+i+'].discount=parseInt(this.value)||0;saveOffersToStorage()">%</td>'+
-      '<td><input type="date" value="'+o.duration+'" style="width:150px;background:rgba(255,255,255,0.07);border:1px solid rgba(201,168,76,0.2);color:var(--white);border-radius:4px;padding:4px 8px;font-family:Cairo,sans-serif;" onchange="offerShops['+i+'].duration=this.value;saveOffersToStorage();syncOffersPage()"></td>'+
+      '<td><input type="number" value="'+o.discount+'" min="1" max="99" style="width:64px;background:rgba(255,255,255,0.07);border:1px solid rgba(201,168,76,0.2);color:var(--white);border-radius:4px;padding:4px 8px;font-family:Cairo,sans-serif;" onchange="offerShops['+i+'].discount=parseInt(this.value)||0;updateOffer('+i+')">%</td>'+
+      '<td><input type="date" value="'+o.duration+'" style="width:150px;background:rgba(255,255,255,0.07);border:1px solid rgba(201,168,76,0.2);color:var(--white);border-radius:4px;padding:4px 8px;font-family:Cairo,sans-serif;" onchange="offerShops['+i+'].duration=this.value;updateOffer('+i+')"></td>'+
       '<td><button class="action-btn del" onclick="removeOffer('+i+')">🗑️ إزالة</button></td>'+
     '</tr>';
   }).join('');
 }
-function removeOffer(i){offerShops.splice(i,1);renderOffers();saveOffersToStorage();syncOffersPage();showToast('تم الإزالة ✓');}
+async function removeOffer(i){var o=offerShops[i];offerShops.splice(i,1);renderOffers();saveOffersToStorage();syncOffersPage();if(o)await sbDeleteOffer(o.id);showToast('تم الإزالة ✓');}
+// Save an edited offer row (discount/duration) to the shared database
+function updateOffer(i){saveOffersToStorage();syncOffersPage();if(offerShops[i])sbUpsertOffer(offerShops[i]);}
 
 /* ── SYNC OFFERS PAGE ── */
 function syncOffersPage() {
@@ -837,7 +933,7 @@ function syncOffersPage() {
   } catch(e) { console.warn('sync error', e); }
 }
 
-function addOfferShop(){
+async function addOfferShop(){
   var sel=document.getElementById('newOfferShopSel');
   if(!sel||!sel.value){showToast('❌ اختر محلاً أولاً');return;}
   var id=parseInt(sel.value);
@@ -846,9 +942,11 @@ function addOfferShop(){
   var shop=shops.find(function(s){return s.id===id;});if(!shop)return;
   var disc=parseInt((document.getElementById('newOfferDiscount')||{}).value)||10;
   var dur=(document.getElementById('newOfferDuration')||{}).value||'';
-  offerShops.push({id:shop.id,name:shop.name,discount:disc,duration:dur});
+  var newOffer={id:shop.id,name:shop.name,discount:disc,duration:dur};
+  offerShops.push(newOffer);
   renderOffers();saveOffersToStorage();syncOffersPage();
   sel.value='';
+  await sbUpsertOffer(newOffer);
   addLog('تم إضافة '+shop.name+' للعروض');
   showToast('تم إضافة '+shop.name+' ✓');
 }
@@ -891,6 +989,7 @@ function initDashboard(){
   renderShopsTable(shops);
   renderOffers();
   populateOfferSelect();
+  loadOffersFromDB();
   addLog('تم تحميل لوحة التحكم');
 }
 
@@ -936,6 +1035,7 @@ function initProductsPanel() {
   renderColorPicker();
   loadProductsFromStorage();
   renderProductsTable(products);
+  loadProductsFromDB();
 }
 
 /* ─── COLOR PICKER ─── */
@@ -1034,6 +1134,16 @@ function loadProductsFromStorage() {
     }
   } catch(e) {}
 }
+// Pull products from the shared database (source of truth)
+async function loadProductsFromDB() {
+  var arr = await sbLoadProductsArr();
+  if (arr) {
+    products = arr;
+    try { localStorage.setItem('hm_products', JSON.stringify(products)); } catch(e){}
+    try { localStorage.setItem('hm_products_live', JSON.stringify(products)); } catch(e){}
+    renderProductsTable(products);
+  }
+}
 
 function saveProductsToStorage() {
   try { localStorage.setItem('hm_products', JSON.stringify(products)); } catch(e) {}
@@ -1052,7 +1162,7 @@ function previewProductImg(input) {
   reader.readAsDataURL(input.files[0]);
 }
 
-function addProduct() {
+async function addProduct() {
   var type   = document.getElementById('newProdType').value;
   var shopId = parseInt(document.getElementById('newProdShop').value)||0;
   var name   = document.getElementById('newProdName').value.trim();
@@ -1083,7 +1193,7 @@ function addProduct() {
   var shopName = (shopsList.find(function(s){return s.id===shopId;})||{}).name||'';
 
   var product = {
-    pid:productIdCounter++, type:type, shopId:shopId, shopName:shopName,
+    pid:Date.now(), type:type, shopId:shopId, shopName:shopName,
     name:name, desc:desc||(type+' من '+shopName), price:price,
     oldPrice:oldPrice, badge:badge, colors:colors,
     sizes:sizes, oosSizes:[], allSizes:allSizes,
@@ -1091,6 +1201,15 @@ function addProduct() {
   };
 
   products.push(product);
+  renderProductsTable(products);
+  showToast('⏳ جارٍ حفظ '+name+'...');
+  var r = await sbPersistProduct(product);
+  if(!r.ok){
+    products = products.filter(function(x){return x.pid!==product.pid;});
+    renderProductsTable(products);
+    showToast('❌ فشل الحفظ: '+(r.msg||'تحقق من الاتصال'));
+    return;
+  }
   saveProductsToStorage();
   syncProductsToPage();
   renderProductsTable(products);
@@ -1110,8 +1229,10 @@ function addProduct() {
 }
 
 /* ─── DELETE PRODUCT ─── */
-function deleteProduct(pid) {
+async function deleteProduct(pid) {
   if (!confirm('حذف هذا المنتج؟')) return;
+  var ok = await sbDeleteProductRow(pid);
+  if(!ok){ showToast('❌ فشل الحذف — تحقق من الاتصال'); return; }
   products = products.filter(function(p){return p.pid!==pid;});
   saveProductsToStorage(); syncProductsToPage();
   renderProductsTable(products);
@@ -1262,7 +1383,7 @@ function loadEditColorImg(input, ci) {
   reader.readAsDataURL(input.files[0]);
 }
 
-function saveEditProduct() {
+async function saveEditProduct() {
   var p = products.find(function(x){return x.pid===editingPid;});
   if (!p) return;
 
@@ -1289,6 +1410,9 @@ function saveEditProduct() {
     }
   });
 
+  showToast('⏳ جارٍ حفظ التعديلات...');
+  var r = await sbPersistProduct(p);
+  if(!r.ok){ showToast('❌ فشل الحفظ: '+(r.msg||'تحقق من الاتصال')); return; }
   saveProductsToStorage();
   syncProductsToPage();
   renderProductsTable(products);
