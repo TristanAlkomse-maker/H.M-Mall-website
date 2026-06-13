@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%9B%8D%EF%B8%8F%3C/text%3E%3C/svg%3E">
+<meta name="description" content="تعرّف على إتش إم مول — مول تسوق متكامل في طرابلس / عين زارة / طريق المشتل.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>من نحن – إتش إم مول</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#C9A84C;--gold-light:#E8CC7A;--gold-dark:#9A7A2E;--gold-pale:#F7F0DC;
+  --brown:#3E2A1A;--brown-mid:#6B4226;--brown-light:#A0714F;
+  --white:#FDFAF4;--off-white:#F2ECD9;--text-dark:#1E1209;
+  --border:rgba(201,168,76,0.2);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'Cairo',sans-serif;background:var(--text-dark);color:var(--white);direction:rtl;min-height:100vh;}
+
+nav{
+  background:rgba(30,18,9,0.95);backdrop-filter:blur(14px);
+  padding:0 5%;display:flex;align-items:center;justify-content:space-between;
+  height:64px;position:sticky;top:0;z-index:100;
+  border-bottom:2px solid var(--gold);
+}
+.logo{font-size:1.4rem;font-weight:900;color:var(--gold);text-decoration:none;}
+.logo span{color:var(--white);font-weight:300;}
+.back-btn{
+  display:flex;align-items:center;gap:6px;
+  color:rgba(253,250,244,0.6);text-decoration:none;font-size:0.85rem;transition:color 0.2s;
+}
+.back-btn:hover{color:var(--gold);}
+
+/* HERO */
+.about-hero{
+  background:linear-gradient(135deg,var(--brown) 0%,#3A1A08 55%,var(--brown-mid) 100%);
+  padding:5rem 5% 4rem;text-align:center;position:relative;overflow:hidden;
+}
+.about-hero::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(ellipse at 50% 100%,rgba(201,168,76,0.12) 0%,transparent 55%);
+}
+.about-hero::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(-55deg,transparent,transparent 60px,rgba(201,168,76,0.02) 61px);
+}
+.hero-eyebrow{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(201,168,76,0.12);border:1px solid rgba(201,168,76,0.35);
+  color:var(--gold-light);font-size:0.75rem;font-weight:700;letter-spacing:0.15em;
+  padding:7px 22px;border-radius:50px;margin-bottom:1.2rem;position:relative;z-index:1;
+}
+.about-hero h1{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:clamp(3.5rem,8vw,6.5rem);color:var(--white);
+  letter-spacing:0.06em;line-height:0.9;position:relative;z-index:1;margin-bottom:0.8rem;
+}
+.about-hero h1 em{color:var(--gold);font-style:normal;}
+.about-hero p{
+  color:rgba(253,250,244,0.55);font-size:1rem;font-weight:300;
+  position:relative;z-index:1;max-width:500px;margin:0 auto;line-height:1.8;
+}
+
+/* BODY */
+.about-body{max-width:820px;margin:0 auto;padding:4rem 5%;}
+
+/* SECTION BLOCK */
+.about-block{
+  background:rgba(255,255,255,0.03);
+  border:1px solid rgba(201,168,76,0.15);
+  border-radius:16px;padding:2rem 2.2rem;
+  margin-bottom:1.5rem;
+  position:relative;overflow:hidden;
+  transition:border-color 0.3s;
+}
+.about-block:hover{border-color:rgba(201,168,76,0.35);}
+.about-block::before{
+  content:'';position:absolute;top:0;right:0;
+  width:4px;height:100%;background:var(--gold);
+  border-radius:0 16px 16px 0;
+}
+.block-icon{
+  font-size:1.8rem;margin-bottom:0.8rem;display:block;
+}
+.block-title{
+  font-size:1.1rem;font-weight:800;color:var(--gold);
+  letter-spacing:0.05em;margin-bottom:0.7rem;
+}
+.block-text{
+  font-size:0.92rem;color:rgba(253,250,244,0.65);
+  line-height:1.9;font-weight:300;
+}
+.block-text strong{color:var(--gold-light);font-weight:700;}
+
+/* STATS ROW */
+.stats-row{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;
+  margin:2.5rem 0;
+}
+.stat-box{
+  background:rgba(201,168,76,0.07);
+  border:1px solid rgba(201,168,76,0.2);
+  border-radius:12px;padding:1.4rem 1rem;text-align:center;
+}
+.stat-box .num{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:2.8rem;color:var(--gold);line-height:1;
+  text-shadow:0 0 20px rgba(201,168,76,0.3);
+}
+.stat-box .lbl{
+  font-size:0.72rem;color:rgba(253,250,244,0.45);
+  letter-spacing:0.1em;margin-top:4px;font-weight:600;
+}
+
+/* CONTACT CARD */
+.contact-card{
+  background:var(--brown);border:1px solid rgba(201,168,76,0.3);
+  border-radius:16px;overflow:hidden;margin-bottom:1.5rem;
+}
+.contact-card-header{
+  background:rgba(201,168,76,0.1);border-bottom:1px solid rgba(201,168,76,0.2);
+  padding:1rem 1.5rem;
+}
+.contact-card-header h3{color:var(--gold);font-size:1rem;font-weight:800;}
+.contact-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:0;
+  padding:1.5rem;
+}
+.c-item{
+  display:flex;align-items:flex-start;gap:0.75rem;
+  padding:0.75rem 0;border-bottom:1px solid rgba(201,168,76,0.08);
+}
+.c-item:nth-child(odd){padding-left:1rem;border-left:1px solid rgba(201,168,76,0.08);}
+.c-item:nth-last-child(-n+2){border-bottom:none;}
+.c-ico{
+  width:36px;height:36px;border-radius:8px;
+  background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.2);
+  display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;
+}
+.c-label{font-size:0.7rem;color:var(--brown-light);margin-bottom:2px;}
+.c-val{font-size:0.88rem;font-weight:700;color:var(--white);}
+
+/* FOOTER */
+footer{
+  background:#0D0806;border-top:1px solid rgba(201,168,76,0.15);
+  padding:2rem 5%;display:flex;align-items:center;justify-content:space-between;
+  font-size:0.82rem;margin-top:1rem;
+}
+.f-logo{font-size:1rem;font-weight:900;color:var(--gold);}
+.f-logo span{color:var(--white);font-weight:300;}
+footer p{color:rgba(253,250,244,0.3);}
+footer a{color:var(--gold);text-decoration:none;}
+
+@media(max-width:640px){
+  .stats-row{grid-template-columns:repeat(2,1fr);}
+  .contact-grid{grid-template-columns:1fr;}
+  .c-item:nth-child(odd){padding-left:0;border-left:none;}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="logo" href="youth-fashion-v2.html">إتش إم <span>مول</span></a>
+  <a class="back-btn" href="youth-fashion-v2.html">← العودة للرئيسية</a>
+</nav>
+
+<!-- HERO -->
+<div class="about-hero">
+  <div class="hero-eyebrow">✦ تعرّف علينا ✦</div>
+  <h1>من<br><em>نحن</em></h1>
+  <p>وجهتكم الأولى للتسوق في قلب طرابلس — مول متكامل يجمع أرقى المحلات تحت سقف واحد</p>
+</div>
+
+<div class="about-body">
+
+  <!-- STATS -->
+  <div class="stats-row">
+    <div class="stat-box"><div class="num">35</div><div class="lbl">محلاً متنوعاً</div></div>
+    <div class="stat-box"><div class="num">50<span style="font-size:0.5em">%</span></div><div class="lbl">أقصى خصم</div></div>
+    <div class="stat-box"><div class="num">7</div><div class="lbl">أيام في الأسبوع</div></div>
+    <div class="stat-box"><div class="num">2026</div><div class="lbl">موسم جديد</div></div>
+  </div>
+
+  <!-- WHO WE ARE -->
+  <div class="about-block">
+    <span class="block-icon">🏛️</span>
+    <div class="block-title">من نحن</div>
+    <div class="block-text">
+      <strong>إتش إم مول</strong> هو وجهة تسوّق متكاملة تقع في قلب <strong>طرابلس / عين زارة / طريق المشتل</strong>. يضمّ المول أكثر من <strong>35 محلاً</strong> متنوعاً تغطي احتياجات الرجل الشبابي والعائلة بأكملها، من أحدث صيحات الموضة الشبابية والزي العربي الأصيل، إلى محلات الأحذية، والأجهزة الإلكترونية، وخدمات السفر والسياحة.
+    </div>
+  </div>
+
+  <!-- ACTIVITY -->
+  <div class="about-block">
+    <span class="block-icon">🛍️</span>
+    <div class="block-title">نشاطنا وتخصصنا</div>
+    <div class="block-text">
+      يتخصص المول في تقديم تجربة تسوّق شاملة تتوزع على عدة قطاعات:<br><br>
+      <strong>👕 الملابس الشبابية</strong> — أكثر من 25 محلاً تحمل أبرز الماركات المحلية والعالمية مثل SOLO FASHION وMADI وLUSSO وWAFI FASHION وغيرها.<br><br>
+      <strong>🕌 الزي العربي والليبي</strong> — تشكيلة واسعة من الثياب العربية والجلابيات الراقية في محلات متخصصة مثل الشوشان والسوسي والفاروق والكاط الراقي.<br><br>
+      <strong>📱 الإلكترونيات</strong> — محل الهاتف المحمول لبيع وصيانة الأجهزة الذكية.<br><br>
+      <strong>✈️ السفر والسياحة</strong> — مجموعة جبل عمر للسفر والسياحة وخدمات الحج والعمرة.
+    </div>
+  </div>
+
+  <!-- LOCATION -->
+  <div class="about-block">
+    <span class="block-icon">📍</span>
+    <div class="block-title">موقعنا</div>
+    <div class="block-text">
+      يقع إتش إم مول في موقع استراتيجي مميز في<br>
+      <strong>طرابلس / عين زارة / طريق المشتل</strong><br><br>
+      يتميز المول بـ<strong>موقف سيارات واسع</strong> وسهولة الوصول من معظم أحياء طرابلس، مما يجعله الوجهة المفضلة للعائلات والشباب على حدٍّ سواء.
+    </div>
+  </div>
+
+  <!-- CONTACT CARD -->
+  <div class="contact-card">
+    <div class="contact-card-header">
+      <h3>📞 معلومات التواصل والدوام</h3>
+    </div>
+    <div class="contact-grid">
+      <div class="c-item">
+        <div class="c-ico">📱</div>
+        <div>
+          <div class="c-label">رقم الهاتف</div>
+          <div class="c-val">091-8619443</div>
+        </div>
+      </div>
+      <div class="c-item">
+        <div class="c-ico">📧</div>
+        <div>
+          <div class="c-label">البريد الإلكتروني</div>
+          <div class="c-val">talkomse11@gmail.com</div>
+        </div>
+      </div>
+      <div class="c-item">
+        <div class="c-ico">📍</div>
+        <div>
+          <div class="c-label">العنوان</div>
+          <div class="c-val">طرابلس / عين زارة / طريق المشتل</div>
+        </div>
+      </div>
+      <div class="c-item">
+        <div class="c-ico">🕐</div>
+        <div>
+          <div class="c-label">أوقات العمل</div>
+          <div class="c-val">السبت – الخميس: 10ص – 1ص<br>الجمعة: 2م – 1ص</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VISION -->
+  <div class="about-block">
+    <span class="block-icon">🌟</span>
+    <div class="block-title">رؤيتنا</div>
+    <div class="block-text">
+      نسعى في <strong>إتش إم مول</strong> إلى تقديم تجربة تسوّق راقية تجمع بين <strong>التنوع والجودة والأسعار المناسبة</strong>، مع الحفاظ على الهوية الليبية الأصيلة. هدفنا أن نكون المرجع الأول لكل من يبحث عن الموضة والأناقة في طرابلس.
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <div class="f-logo">إتش إم <span>مول</span></div>
+  <p>© 2026 جميع الحقوق محفوظة</p>
+  <a href="youth-fashion-v2.html">← العودة للرئيسية</a>
+</footer>
+
+</body>
+</html>
