@@ -304,7 +304,10 @@ footer a{color:var(--gold);text-decoration:none;}
     <option value="0">— جميع المحلات —</option>
   </select>
   <input class="search-input" type="text" id="productSearch" placeholder="🔍 ابحث عن منتج..." oninput="filterProducts()">
-  <label style="font-size:0.72rem;color:rgba(253,250,244,0.35);margin-right:auto;" id="cartInfo">🛒 السلة: <span id="cartCount">0</span></label>
+  <a href="https://wa.me/218930544909" target="_blank" id="cartInfo" style="font-size:0.82rem;color:rgba(253,250,244,0.55);margin-right:auto;text-decoration:none;display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid rgba(201,168,76,0.25);border-radius:8px;background:rgba(201,168,76,0.06);transition:all 0.2s;cursor:pointer;" onmouseover="this.style.borderColor='rgba(201,168,76,0.6)';this.style.color='#C9A84C';" onmouseout="this.style.borderColor='rgba(201,168,76,0.25)';this.style.color='rgba(253,250,244,0.55)';">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.78.47 3.45 1.28 4.9L2 22l5.31-1.39a9.83 9.83 0 0 0 4.73 1.2h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 18.06c-1.5 0-2.93-.4-4.18-1.16l-.3-.18-3.15.83.84-3.07-.2-.32a8.2 8.2 0 0 1-1.26-4.34c0-4.54 3.7-8.24 8.25-8.24 4.55 0 8.25 3.7 8.25 8.24 0 4.55-3.7 8.24-8.25 8.24z"/></svg>
+    <span>تواصل واتساب</span>
+  </a>
 </div>
 
 <!-- PRODUCTS -->
@@ -317,7 +320,7 @@ footer a{color:var(--gold);text-decoration:none;}
 </section>
 
 <!-- CART TOAST -->
-<div class="cart-toast" id="cartToast">✓ تمت الإضافة للسلة</div>
+<div class="cart-toast" id="cartToast">✓ تم تحديث المنتجات</div>
 
 <!-- FOOTER -->
 <footer>
@@ -396,7 +399,33 @@ const catalogShops = [
 // STATE
 // ═══════════════════════════
 var currentShopId = 0;
-var cart = [];
+var WHATSAPP_NUMBER = '218930544909';
+
+// Build a WhatsApp order message for a product and open the chat in a new tab
+function orderViaWhatsApp(opts) {
+  var lines = ['مرحباً، أرغب بطلب المنتج التالي:', ''];
+  lines.push('🛍️ ' + (opts.name || ''));
+  if (opts.shopName) lines.push('🏪 المحل: ' + opts.shopName);
+  if (opts.color)    lines.push('🎨 اللون: ' + opts.color);
+  if (opts.size)      lines.push('📏 المقاس: ' + opts.size);
+  if (opts.price)     lines.push('💰 السعر: ' + opts.price + ' د.ل');
+  var msg = encodeURIComponent(lines.join('\n'));
+  window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + msg, '_blank');
+}
+
+
+function getProductById(pid){
+  var live = JSON.parse(localStorage.getItem('hm_products_live') || '[]');
+  var found = live.find(function(p){ return p.pid == pid || 'ap_'+p.pid == pid; });
+  if(found) return found;
+  // search demo products
+  var allShops = [1,2,3,4,5,7,8,9,10,11,12,13,14,15,16,17,18,19,21,22,23,24,25,26];
+  for(var s=0;s<allShops.length;s++){
+    var demo = genProducts(allShops[s]);
+    for(var d=0;d<demo.length;d++){ if(demo[d].id==pid) return demo[d]; }
+  }
+  return null;
+}
 var wishlist = new Set();
 var selectedColors = {};
 var selectedSizes = {};
@@ -592,7 +621,7 @@ function renderProducts() {
           (p.oldPrice?'<span class="old-price">'+p.oldPrice+' د.ل</span><span class="discount-badge">-'+disc+'%</span>':'')+
         '</div>'+
         '<div class="sizes-row">'+sizes+'</div>'+
-        '<button class="atc-btn" id="atc-'+p.id+'" onclick="addToCart(\''+p.id+'\')" >🛒 إضافة للسلة</button>'+
+        '<button class="atc-btn" id="atc-'+p.id+'" onclick="addToCart(\''+p.id+'\')" >📲 اطلب عبر واتساب</button>'+
       '</div>'+
       '<div class="card-footer">'+
         '<span class="'+(open?'open-badge':'closed-badge')+'">'+(open?'● مفتوح الآن':'● مغلق')+'</span>'+
@@ -654,7 +683,7 @@ function buildCard(p, pi, open) {
         (p.oldPrice ? '<span class="old-price">' + p.oldPrice + ' د.ل</span><span class="discount-badge">-' + disc + '%</span>' : '') +
       '</div>' +
       '<div class="sizes-row">' + sizes + '</div>' +
-      '<button class="atc-btn" id="atc-' + p.id + '" data-action="cart" data-pid="' + p.id + '">🛒 إضافة للسلة</button>' +
+      '<button class="atc-btn" id="atc-' + p.id + '" data-action="cart" data-pid="' + p.id + '">📲 اطلب عبر واتساب</button>' +
     '</div>' +
     '<div class="card-footer">' +
       '<span class="' + (open ? 'open-badge' : 'closed-badge') + '">' + (open ? '● مفتوح الآن' : '● مغلق') + '</span>' +
@@ -710,12 +739,15 @@ function selectSize(pid,sz){
 }
 
 function addToCart(pid){
-  cart.push(pid);
-  document.getElementById('cartCount').textContent=cart.length;
+  var p = findProductById(pid);
+  if(!p){ return; }
+  var ci = selectedColors[pid] || 0;
+  var color = (p.colors && p.colors[ci]) ? p.colors[ci].n : '';
+  var size = selectedSizes[pid] || (p.sizes && p.sizes[0]) || '';
+  var shopName = p._shopName || ((catalogShops.find(function(s){return s.id===p.shopId;})||{}).name) || '';
+  orderViaWhatsApp({name:p.name, shopName:shopName, color:color, size:size, price:p.price});
   var btn=document.getElementById('atc-'+pid);
-  if(btn){btn.textContent='✓ تمت الإضافة';btn.classList.add('added');setTimeout(function(){btn.textContent='🛒 إضافة للسلة';btn.classList.remove('added');},2000);}
-  var t=document.getElementById('cartToast');
-  t.classList.add('show');setTimeout(function(){t.classList.remove('show');},2200);
+  if(btn){btn.textContent='↗ تم الفتح في واتساب';btn.classList.add('added');setTimeout(function(){btn.textContent='📲 اطلب عبر واتساب';btn.classList.remove('added');},2000);}
 }
 
 function toggleWishlist(pid){
@@ -879,22 +911,20 @@ function qvSelectSize(s) {
 
 function qvAddToCart() {
   if (!qvProduct) return;
-  cart.push(qvProduct.id);
-  document.getElementById('cartCount').textContent = cart.length;
+  var color = (qvProduct.colors && qvProduct.colors[qvColorIdx]) ? qvProduct.colors[qvColorIdx].n : '';
+  var shopName = qvProduct._shopName || qvProduct.shopName || '';
+  orderViaWhatsApp({name:qvProduct.name, shopName:shopName, color:color, size:qvSizeSelected, price:qvProduct.price});
   var btn = document.getElementById('qvCartBtn');
-  btn.textContent = '✓ تمت الإضافة!';
+  btn.textContent = '↗ تم الفتح في واتساب';
   btn.style.background = 'rgba(201,168,76,0.25)';
   btn.style.color = 'var(--gold)';
   btn.style.border = '1px solid rgba(201,168,76,0.4)';
   setTimeout(function(){
-    btn.textContent = '🛒 إضافة للسلة';
+    btn.textContent = '📲 اطلب عبر واتساب';
     btn.style.background = 'var(--gold)';
     btn.style.color = 'var(--brown)';
     btn.style.border = 'none';
   }, 2000);
-  var t=document.getElementById('cartToast');
-  t.classList.add('show');
-  setTimeout(function(){t.classList.remove('show');}, 2200);
 }
 
 function closeQV() {
@@ -933,7 +963,7 @@ function onProductsUpdated() {
   if (t) {
     t.textContent = '✓ تم تحديث المنتجات';
     t.classList.add('show');
-    setTimeout(function(){ t.classList.remove('show'); t.textContent = '✓ تمت الإضافة للسلة'; }, 2500);
+    setTimeout(function(){ t.classList.remove('show'); }, 2500);
   }
 }
 
@@ -1040,7 +1070,7 @@ document.addEventListener('click', function(e) {
         </div>
 
         <!-- ADD TO CART -->
-        <button id="qvCartBtn" onclick="qvAddToCart()" style="width:100%;padding:13px;border-radius:8px;background:var(--gold);color:var(--brown);font-family:'Cairo',sans-serif;font-size:1rem;font-weight:900;border:none;cursor:pointer;transition:all 0.2s;margin-top:auto;">🛒 إضافة للسلة</button>
+        <button id="qvCartBtn" onclick="qvAddToCart()" style="width:100%;padding:13px;border-radius:8px;background:var(--gold);color:var(--brown);font-family:'Cairo',sans-serif;font-size:1rem;font-weight:900;border:none;cursor:pointer;transition:all 0.2s;margin-top:auto;">📲 اطلب عبر واتساب</button>
 
         <!-- STATUS -->
         <div id="qvStatus" style="text-align:center;font-size:0.72rem;"></div>
