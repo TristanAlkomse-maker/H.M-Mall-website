@@ -945,13 +945,17 @@ function closeQVOutside(e) { if(e.target.id==='qvOverlay') closeQV(); }
 document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeQV(); });
 
 
-// Open a product's Quick View if the page was reached via a ?product= deep-link
+// Open a product's Quick View if the page was reached via a ?product= deep-link.
+// Product data loads asynchronously from the database, so on a cold visit it may
+// not be ready yet — retry briefly until the product appears (max ~12s).
 var __deepLinkOpened = false;
+var __deepLinkTries = 0;
 function openProductFromUrl() {
   if (__deepLinkOpened) return;
   var pid = new URLSearchParams(location.search).get('product');
   if (!pid) return;
-  if (findProduct(pid)) { __deepLinkOpened = true; showQuickView(pid); }
+  if (findProduct(pid)) { __deepLinkOpened = true; showQuickView(pid); return; }
+  if (__deepLinkTries < 40) { __deepLinkTries++; setTimeout(openProductFromUrl, 300); }
 }
 
 // Init — paint immediately, then refresh from the shared database
