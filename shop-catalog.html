@@ -409,8 +409,15 @@ function orderViaWhatsApp(opts) {
   if (opts.color)    lines.push('🎨 اللون: ' + opts.color);
   if (opts.size)      lines.push('📏 المقاس: ' + opts.size);
   if (opts.price)     lines.push('💰 السعر: ' + opts.price + ' د.ل');
+  if (opts.link)      { lines.push(''); lines.push('🔗 رابط المنتج: ' + opts.link); }
   var msg = encodeURIComponent(lines.join('\n'));
   window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + msg, '_blank');
+}
+
+// Build a shareable deep-link that opens this product on the live site
+function productLink(id) {
+  if (id == null) return '';
+  return location.origin + location.pathname + '?product=' + encodeURIComponent(id);
 }
 
 
@@ -745,7 +752,7 @@ function addToCart(pid){
   var color = (p.colors && p.colors[ci]) ? p.colors[ci].n : '';
   var size = selectedSizes[pid] || (p.sizes && p.sizes[0]) || '';
   var shopName = p._shopName || ((catalogShops.find(function(s){return s.id===p.shopId;})||{}).name) || '';
-  orderViaWhatsApp({name:p.name, shopName:shopName, color:color, size:size, price:p.price});
+  orderViaWhatsApp({name:p.name, shopName:shopName, color:color, size:size, price:p.price, link:productLink(p.id != null ? p.id : pid)});
   var btn=document.getElementById('atc-'+pid);
   if(btn){btn.textContent='↗ تم الفتح في واتساب';btn.classList.add('added');setTimeout(function(){btn.textContent='📲 اطلب عبر واتساب';btn.classList.remove('added');},2000);}
 }
@@ -913,7 +920,7 @@ function qvAddToCart() {
   if (!qvProduct) return;
   var color = (qvProduct.colors && qvProduct.colors[qvColorIdx]) ? qvProduct.colors[qvColorIdx].n : '';
   var shopName = qvProduct._shopName || qvProduct.shopName || '';
-  orderViaWhatsApp({name:qvProduct.name, shopName:shopName, color:color, size:qvSizeSelected, price:qvProduct.price});
+  orderViaWhatsApp({name:qvProduct.name, shopName:shopName, color:color, size:qvSizeSelected, price:qvProduct.price, link:productLink(qvProduct.id)});
   var btn = document.getElementById('qvCartBtn');
   btn.textContent = '↗ تم الفتح في واتساب';
   btn.style.background = 'rgba(201,168,76,0.25)';
@@ -938,11 +945,22 @@ function closeQVOutside(e) { if(e.target.id==='qvOverlay') closeQV(); }
 document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeQV(); });
 
 
+// Open a product's Quick View if the page was reached via a ?product= deep-link
+var __deepLinkOpened = false;
+function openProductFromUrl() {
+  if (__deepLinkOpened) return;
+  var pid = new URLSearchParams(location.search).get('product');
+  if (!pid) return;
+  if (findProduct(pid)) { __deepLinkOpened = true; showQuickView(pid); }
+}
+
 // Init — paint immediately, then refresh from the shared database
 renderProducts();
+openProductFromUrl();
 var __lastProdHash = localStorage.getItem('hm_products_live') || '';
 sbSyncProductsToCache().then(function(ok){
   if(ok){ __lastProdHash = localStorage.getItem('hm_products_live') || ''; renderProducts(); }
+  openProductFromUrl();
 });
 
 // ── Poll the shared database; re-render only when the data actually changes
