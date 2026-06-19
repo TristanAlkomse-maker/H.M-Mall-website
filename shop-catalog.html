@@ -955,11 +955,20 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeQV();
 var __deepLinkOpened = false;
 var __deepLinkTries = 0;
 function openProductFromUrl() {
-  if (__deepLinkOpened) return;
   var pid = new URLSearchParams(location.search).get('product');
+
   if (!pid) return;
-  if (findProduct(pid)) { __deepLinkOpened = true; showQuickView(pid); return; }
-  if (__deepLinkTries < 40) { __deepLinkTries++; setTimeout(openProductFromUrl, 300); }
+
+  if (findProduct(pid)) {
+    showQuickView(pid);
+    __deepLinkOpened = true;
+    return;
+  }
+
+  if (__deepLinkTries < 40) {
+    __deepLinkTries++;
+    setTimeout(openProductFromUrl, 300);
+  }
 }
 
 // Init — paint immediately, then refresh from the shared database
