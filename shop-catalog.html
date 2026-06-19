@@ -955,6 +955,8 @@ document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeQV();
 var __deepLinkOpened = false;
 var __deepLinkTries = 0;
 function openProductFromUrl() {
+  if (__deepLinkOpened) return;
+
   var pid = new URLSearchParams(location.search).get('product');
 
   if (!pid) return;
