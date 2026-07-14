@@ -1372,6 +1372,14 @@ footer{
 <!-- ══════════════════════════════════════
  SCRIPTS
 ══════════════════════════════════════ -->
+<!-- ═══ Supabase (قراءة أسماء وشعارات المحلات المحدّثة من لوحة التحكم) ═══ -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  window.SB_URL = 'https://lmiodxtfnfudixtdxpwo.supabase.co';
+  window.SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxtaW9keHRmbmZ1ZGl4dGR4cHdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgxNjIsImV4cCI6MjA5Njk0NDE2Mn0.E1r9ECpY_XppMw7mrnHGVlMMYQkcu-tttSOfQ0nIaM0';
+  window.sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(window.SB_URL, window.SB_KEY) : null;
+</script>
 <script>
 
 (function(){
@@ -1719,6 +1727,25 @@ function goToShop() {
 }
 
 renderShops(shops);
+
+// ═══ تحديث أسماء وشعارات المحلات من قاعدة البيانات (لوحة التحكم) ═══
+async function applyShopOverrides(){
+  if(!window.sb) return;
+  try{
+    var res = await window.sb.from('shops').select('*');
+    if(res.error || !res.data) return;
+    res.data.forEach(function(row){
+      var s = shops.find(function(x){return x.id===row.id;});
+      if(s){
+        if(row.name) s.name=row.name;
+        if(row.tag)  s.tag=row.tag;
+        if(row.logo) s.logo=row.logo;
+      }
+    });
+    filterShops(); // إعادة الرسم مع مراعاة الفلتر/البحث الحالي
+  }catch(e){ console.warn('shops overrides', e); }
+}
+applyShopOverrides();
 
 (function(){
  const svg=document.getElementById('footerSvg');

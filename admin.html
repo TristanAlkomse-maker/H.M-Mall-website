@@ -684,6 +684,25 @@ tbody td{padding:10px 16px;font-size:0.85rem;color:rgba(253,250,244,0.75);}
     if(res.error){ console.warn('load offers', res.error); return null; }
     return res.data||[];
   }
+  // Shops (اسم + تصنيف + لوجو — مشترك للجميع)
+  async function sbUpsertShop(s){
+    if(!window.sb) return false;
+    var res = await window.sb.from('shops').upsert({id:s.id, name:s.name, tag:s.tag||'brand', logo:s.logo||null}, {onConflict:'id'});
+    if(res.error){ console.warn('shop upsert', res.error); return false; }
+    return true;
+  }
+  async function sbDeleteShopRow(id){
+    if(!window.sb) return false;
+    var res = await window.sb.from('shops').delete().eq('id', id);
+    if(res.error){ console.warn('shop del', res.error); return false; }
+    return true;
+  }
+  async function sbLoadShopsArr(){
+    if(!window.sb) return null;
+    var res = await window.sb.from('shops').select('*');
+    if(res.error){ console.warn('load shops', res.error); return null; }
+    return res.data||[];
+  }
 </script>
 
 <script>
@@ -809,6 +828,20 @@ function loadShopsFromStorage() {
     });
   } catch(e){}
 }
+// تحميل المحلات (الاسم + التصنيف + اللوجو) من قاعدة البيانات المشتركة
+async function loadShopsFromDB() {
+  var arr = await sbLoadShopsArr();
+  if (!arr) return;
+  arr.forEach(function(sv){
+    var i = shops.findIndex(function(s){return s.id===sv.id;});
+    if(i!==-1){
+      if(sv.name) shops[i].name=sv.name;
+      if(sv.tag)  shops[i].tag=sv.tag;
+      if(sv.logo) shops[i].logo=sv.logo;
+    }
+  });
+  renderShopsTable(shops);
+}
 function saveOffersToStorage() {
   try { localStorage.setItem('hm_offers', JSON.stringify(offerShops)); } catch(e){}
 }
@@ -865,10 +898,11 @@ function renderShopsTable(list) {
 function filterTable(q){
   renderShopsTable(q?shops.filter(function(s){return s.name.toLowerCase().includes(q.toLowerCase())||String(s.id).includes(q);}):shops);
 }
-function confirmDel(id,name){
+async function confirmDel(id,name){
   if(confirm('هل تريد حذف المحل #'+id+' "'+name+'"؟')){
     var i=shops.findIndex(function(s){return s.id===id;});
     if(i!==-1){shops.splice(i,1);saveShopsToStorage();renderShopsTable(shops);}
+    await sbDeleteShopRow(id);
     addLog('تم حذف محل #'+id+' — '+name);
     showToast('تم حذف '+name+' ✓');
     var el=document.getElementById('totalShops');if(el)el.textContent=shops.filter(function(s){return s.tag!=='vacant';}).length;
@@ -876,27 +910,45 @@ function confirmDel(id,name){
 }
 
 // EDIT MODAL
+var _editShopLogo=null; // يحتفظ بصورة اللوجو الجديدة المختارة (إن وُجدت)
 function openEditModal(id){
   var shop=shops.find(function(s){return s.id===id;});if(!shop)return;
+  _editShopLogo=null;
   document.getElementById('editShopId').value=shop.id;
   document.getElementById('editShopName').value=shop.name;
   document.getElementById('editShopTag').value=shop.tag;
-  var prev=document.getElementById('logoPreview');if(prev){prev.style.display='none';}
+  var prev=document.getElementById('logoPreview');
+  if(prev){
+    if(shop.logo){prev.src=shop.logo;prev.style.display='block';}
+    else {prev.src='';prev.style.display='none';}
+  }
   document.getElementById('editShopModal').style.display='flex';
 }
 function closeEditModal(){document.getElementById('editShopModal').style.display='none';}
-function saveEditShop(){
+async function saveEditShop(){
   var id=parseInt(document.getElementById('editShopId').value);
   var name=document.getElementById('editShopName').value.trim();
   var tag=document.getElementById('editShopTag').value;
   if(!name){showToast('❌ الاسم لا يمكن أن يكون فارغاً');return;}
   var i=shops.findIndex(function(s){return s.id===id;});
-  if(i!==-1){shops[i].name=name;shops[i].tag=tag;saveShopsToStorage();renderShopsTable(shops);closeEditModal();addLog('تم تعديل محل #'+id);showToast('تم الحفظ ✓');}
+  if(i===-1)return;
+  showToast('⏳ جارٍ الحفظ...');
+  var logoUrl = shops[i].logo || null;
+  if(_editShopLogo){                                   // رُفعت صورة جديدة
+    var u = await sbUploadDataUrl(_editShopLogo, 'shop'+id);
+    if(u) logoUrl = u;
+  }
+  shops[i].name=name; shops[i].tag=tag; shops[i].logo=logoUrl;
+  saveShopsToStorage(); renderShopsTable(shops);
+  var ok = await sbUpsertShop({id:id, name:name, tag:tag, logo:logoUrl});
+  closeEditModal();
+  addLog('تم تعديل محل #'+id);
+  showToast(ok?'تم الحفظ ✓ (ظاهر للجميع)':'⚠️ حُفظ محلياً فقط — تحقق من قاعدة البيانات');
 }
 function previewLogo(input){
   var prev=document.getElementById('logoPreview');if(!prev||!input.files||!input.files[0])return;
   var reader=new FileReader();
-  reader.onload=function(e){prev.src=e.target.result;prev.style.display='block';};
+  reader.onload=function(e){prev.src=e.target.result;prev.style.display='block';_editShopLogo=e.target.result;};
   reader.readAsDataURL(input.files[0]);
 }
 
@@ -973,6 +1025,7 @@ function showToast(msg){
 // INIT
 function initDashboard(){
   loadShopsFromStorage();
+  loadShopsFromDB();
   loadOffersFromStorage();
   loadSettings();
   var el=document.getElementById('totalShops');if(el)el.textContent=shops.filter(function(s){return s.tag!=='vacant';}).length;

@@ -409,15 +409,8 @@ function orderViaWhatsApp(opts) {
   if (opts.color)    lines.push('🎨 اللون: ' + opts.color);
   if (opts.size)      lines.push('📏 المقاس: ' + opts.size);
   if (opts.price)     lines.push('💰 السعر: ' + opts.price + ' د.ل');
-  if (opts.link)      { lines.push(''); lines.push('🔗 رابط المنتج: ' + opts.link); }
   var msg = encodeURIComponent(lines.join('\n'));
   window.open('https://wa.me/' + WHATSAPP_NUMBER + '?text=' + msg, '_blank');
-}
-
-// Build a shareable deep-link that opens this product on the live site
-function productLink(id) {
-  if (id == null) return '';
-  return location.origin + location.pathname + '?product=' + encodeURIComponent(id);
 }
 
 
@@ -752,7 +745,7 @@ function addToCart(pid){
   var color = (p.colors && p.colors[ci]) ? p.colors[ci].n : '';
   var size = selectedSizes[pid] || (p.sizes && p.sizes[0]) || '';
   var shopName = p._shopName || ((catalogShops.find(function(s){return s.id===p.shopId;})||{}).name) || '';
-  orderViaWhatsApp({name:p.name, shopName:shopName, color:color, size:size, price:p.price, link:productLink(p.id != null ? p.id : pid)});
+  orderViaWhatsApp({name:p.name, shopName:shopName, color:color, size:size, price:p.price});
   var btn=document.getElementById('atc-'+pid);
   if(btn){btn.textContent='↗ تم الفتح في واتساب';btn.classList.add('added');setTimeout(function(){btn.textContent='📲 اطلب عبر واتساب';btn.classList.remove('added');},2000);}
 }
@@ -769,13 +762,10 @@ var qvSizeSelected = null;
 var PLACEHOLDER_QV = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" viewBox="0 0 400 400"><rect fill="%233E2A1A" width="400" height="400"/><text x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%23C9A84C" font-size="90">🛍️</text></svg>';
 
 function findProduct(pid) {
-  // IDs arrive from the URL as strings, but demo product IDs are numbers, so
-  // compare on string form everywhere to avoid 901 === "901" failing.
-  var key = String(pid);
   // Check admin products first
   try {
     var adminProds = JSON.parse(localStorage.getItem('hm_products_live') || '[]');
-    var found = adminProds.find(function(p){ return 'ap_'+p.pid === key || String(p.pid) === key; });
+    var found = adminProds.find(function(p){ return 'ap_'+p.pid === String(pid) || p.pid === pid; });
     if (found) {
       return {
         id: 'ap_'+found.pid, shopId:found.shopId, _shopName:found.shopName,
@@ -787,18 +777,17 @@ function findProduct(pid) {
       };
     }
   } catch(e){}
-  // Fall back to demo — search all non-vacant shops so a deep-link resolves
-  // regardless of which shop the product belongs to.
+  // Fall back to demo
   var shopSrc = currentShopId > 0 ? currentShopId : null;
   if (!shopSrc) {
-    var allShops = catalogShops.filter(function(s){return s.tag!=='vacant';});
+    var allShops = catalogShops.filter(function(s){return s.tag!=='vacant';}).slice(0,12);
     for (var i=0; i<allShops.length; i++) {
-      var p = genProducts(allShops[i].id).find(function(x){return String(x.id)===key;});
+      var p = genProducts(allShops[i].id).find(function(x){return x.id===pid;});
       if (p) { p._shopName = allShops[i].name; return p; }
     }
     return null;
   }
-  return genProducts(shopSrc).find(function(x){return String(x.id)===key;})||null;
+  return genProducts(shopSrc).find(function(x){return x.id===pid;})||null;
 }
 
 function showQuickView(pid) {
@@ -924,7 +913,7 @@ function qvAddToCart() {
   if (!qvProduct) return;
   var color = (qvProduct.colors && qvProduct.colors[qvColorIdx]) ? qvProduct.colors[qvColorIdx].n : '';
   var shopName = qvProduct._shopName || qvProduct.shopName || '';
-  orderViaWhatsApp({name:qvProduct.name, shopName:shopName, color:color, size:qvSizeSelected, price:qvProduct.price, link:productLink(qvProduct.id)});
+  orderViaWhatsApp({name:qvProduct.name, shopName:shopName, color:color, size:qvSizeSelected, price:qvProduct.price});
   var btn = document.getElementById('qvCartBtn');
   btn.textContent = '↗ تم الفتح في واتساب';
   btn.style.background = 'rgba(201,168,76,0.25)';
@@ -949,38 +938,40 @@ function closeQVOutside(e) { if(e.target.id==='qvOverlay') closeQV(); }
 document.addEventListener('keydown',function(e){ if(e.key==='Escape') closeQV(); });
 
 
-// Open a product's Quick View if the page was reached via a ?product= deep-link.
-// Product data loads asynchronously from the database, so on a cold visit it may
-// not be ready yet — retry briefly until the product appears (max ~12s).
-var __deepLinkOpened = false;
-var __deepLinkTries = 0;
-function openProductFromUrl() {
-  if (__deepLinkOpened) return;
-
-  var pid = new URLSearchParams(location.search).get('product');
-
-  if (!pid) return;
-
-  if (findProduct(pid)) {
-    showQuickView(pid);
-    __deepLinkOpened = true;
-    return;
-  }
-
-  if (__deepLinkTries < 40) {
-    __deepLinkTries++;
-    setTimeout(openProductFromUrl, 300);
-  }
-}
-
 // Init — paint immediately, then refresh from the shared database
 renderProducts();
-openProductFromUrl();
 var __lastProdHash = localStorage.getItem('hm_products_live') || '';
 sbSyncProductsToCache().then(function(ok){
   if(ok){ __lastProdHash = localStorage.getItem('hm_products_live') || ''; renderProducts(); }
-  openProductFromUrl();
 });
+
+// ═══ تحديث أسماء وشعارات المحلات من قاعدة البيانات (لوحة التحكم) ═══
+async function applyShopOverrides(){
+  if(!window.sb) return;
+  try{
+    var res = await window.sb.from('shops').select('*');
+    if(res.error || !res.data) return;
+    res.data.forEach(function(row){
+      var s = catalogShops.find(function(x){return x.id===row.id;});
+      if(s){
+        if(row.name) s.name=row.name;
+        if(row.tag)  s.tag=row.tag;
+        if(row.logo) s.logo=row.logo;
+      }
+    });
+    // تحديث نصوص قائمة اختيار المحلات
+    var sel=document.getElementById('shopSel');
+    if(sel){
+      Array.prototype.forEach.call(sel.options,function(opt){
+        var s=catalogShops.find(function(x){return x.id===(parseInt(opt.value)||0);});
+        if(s) opt.textContent=s.id+' — '+s.name;
+      });
+    }
+    // إن كان محل معروضاً حالياً، حدّث شعاره واسمه في الأعلى
+    if(currentShopId>0) changeShop(currentShopId);
+  }catch(e){ console.warn('shops overrides', e); }
+}
+applyShopOverrides();
 
 // ── Poll the shared database; re-render only when the data actually changes
 setInterval(function(){
