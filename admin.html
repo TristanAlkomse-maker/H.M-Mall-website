@@ -841,6 +841,11 @@ async function loadShopsFromDB() {
     }
   });
   renderShopsTable(shops);
+  // حدّث أيضاً واجهة "إدارة المنتجات" لتعكس الأسماء الجديدة
+  try{
+    populateProdShopSelect();
+    if(typeof products!=='undefined' && products) renderProductsTable(products);
+  }catch(e){}
 }
 function saveOffersToStorage() {
   try { localStorage.setItem('hm_offers', JSON.stringify(offerShops)); } catch(e){}
@@ -1072,15 +1077,21 @@ var PRESET_COLORS = [
   {n:'بنفسجي',h:'#9C27B0'},{n:'أصفر', h:'#FFC107'},
 ];
 
-function initProductsPanel() {
+// تملأ قائمة اختيار المحل في "إدارة المنتجات" من نفس قائمة "إدارة المحلات"
+function populateProdShopSelect(){
   var sel = document.getElementById('newProdShop');
-  if (sel && sel.options.length <= 1) {
-    shopsList.forEach(function(s) {
-      var o = document.createElement('option');
-      o.value = s.id; o.textContent = s.id + ' — ' + s.name;
-      sel.appendChild(o);
-    });
-  }
+  if(!sel) return;
+  var cur = sel.value;
+  sel.innerHTML = '<option value="">— اختر المحل —</option>';
+  shops.filter(function(s){return s.tag!=='vacant';}).forEach(function(s){
+    var o = document.createElement('option');
+    o.value = s.id; o.textContent = s.id + ' — ' + s.name;
+    sel.appendChild(o);
+  });
+  if(cur) sel.value = cur;
+}
+function initProductsPanel() {
+  populateProdShopSelect();
   renderColorPicker();
   loadProductsFromStorage();
   renderProductsTable(products);
@@ -1239,7 +1250,7 @@ async function addProduct() {
   var allSizes = [];
   document.querySelectorAll('.size-check').forEach(function(cb){ allSizes.push({v:cb.value, s:cb.checked}); });
 
-  var shopName = (shopsList.find(function(s){return s.id===shopId;})||{}).name||'';
+  var shopName = (shops.find(function(s){return s.id===shopId;})||{}).name||'';
 
   var product = {
     pid:Date.now(), type:type, shopId:shopId, shopName:shopName,
@@ -1313,11 +1324,12 @@ function renderProductsTable(list) {
     var thumb = p.img ? '<img src="'+p.img+'" class="prod-thumb-cell">'
       : '<div style="width:50px;height:50px;border-radius:6px;background:rgba(201,168,76,0.1);display:flex;align-items:center;justify-content:center;font-size:1.2rem;">👕</div>';
     var discStr = p.oldPrice ? '<span style="color:#F87171;font-size:0.68rem;">-'+Math.round((1-p.price/p.oldPrice)*100)+'%</span>' : '';
+    var liveShopName = (shops.find(function(s){return s.id===p.shopId;})||{}).name || p.shopName;
     return '<tr>'+
       '<td>'+thumb+'</td>'+
       '<td class="td-name">'+p.name+'</td>'+
       '<td><span style="font-size:0.75rem;color:rgba(253,250,244,0.5);">'+p.type+'</span></td>'+
-      '<td style="font-size:0.8rem;color:rgba(253,250,244,0.6);">'+p.shopName+'</td>'+
+      '<td style="font-size:0.8rem;color:rgba(253,250,244,0.6);">'+liveShopName+'</td>'+
       '<td><span style="color:var(--gold);font-weight:700;">'+p.price+' د.ل</span> '+discStr+'</td>'+
       '<td>'+swatches+'</td>'+
       '<td style="font-size:0.72rem;color:rgba(253,250,244,0.5);">'+p.sizes.join(', ')+'</td>'+
