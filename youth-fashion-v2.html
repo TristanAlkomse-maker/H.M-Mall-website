@@ -53,6 +53,9 @@ nav{
  transform:scale(1.06);
  animation:heroZoom 18s ease-in-out infinite alternate;
 }
+#hero-photo video{
+ position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+}
 #hero-photo::after{
  content:'';position:absolute;inset:0;
  background:linear-gradient(
@@ -1036,7 +1039,9 @@ footer{
 
 <!-- ══ SECTION 1: SHADER HERO ══ -->
 <section id="shader-hero">
- <div id="hero-photo"></div>
+ <div id="hero-photo">
+   <video autoplay muted loop playsinline preload="auto" src="https://res.cloudinary.com/j2erioi5/video/upload/v1784735520/0722_1_spbsmj.mp4"></video>
+ </div>
  <canvas id="shader-canvas"></canvas>
  <div class="spotlight" id="spotlight"></div>
 
